@@ -1,31 +1,54 @@
-version: "3"
+version: '3.8'
+
 services:
   selenium-hub:
     image: selenium/hub:latest
     container_name: selenium-hub
     ports:
+      # Mapeia as portas do Grid para a sua máquina local
+      - "4442:4442"
+      - "4443:4443"
       - "4444:4444"
-    environment:
-      - GRID_MAX_SESSION=4
 
-  chrome:
-    image: selenium/node-chrome:latest
+  appium-node-1:
+    # Constrói a imagem a partir do Dockerfile na pasta ./appium-node
+    build: ./appium-node
+    # Garante que o Hub inicie antes deste nó
     depends_on:
       - selenium-hub
-    environment:
-      - SE_EVENT_BUS_HOST=selenium-hub
-      - SE_EVENT_BUS_PUBLISH_PORT=4442
-      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+    # Opcional: bom para debug, permite conectar diretamente neste Appium
+    ports:
+      - "4724:4723" # Mapeia a porta interna 4723 do contêiner para a 4724 da sua máquina
+    privileged: true
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
     volumes:
-      - /dev/shm:/dev/shm
+      - ./appium-node/node.toml:/opt/selenium/node.toml
+      - ./appium-node/appium-config.yml:/opt/selenium/appium-config.yml
+      - ./appium-node/entrypoint.sh:/opt/bin/entrypoint.sh
+      - /c/Users/Leandro/.android:/root/.android
 
-  chrome2:
-    image: selenium/node-chrome:latest
+  test-runner:
+    build:
+      context: .
+      dockerfile: test-runner.Dockerfile
+    container_name: test-runner
     depends_on:
       - selenium-hub
-    environment:
-      - SE_EVENT_BUS_HOST=selenium-hub
-      - SE_EVENT_BUS_PUBLISH_PORT=4442
-      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - appium-node-1
     volumes:
-      - /dev/shm:/dev/shm
+      - .:/tests
+    working_dir: /tests
+    environment:
+      - BROWSER=remote
+      - SELENIUM_REMOTE_URL=http://appium-node-1:4723/
+      - DEVICE_NAME=192.168.15.28:5555
+      - CHROMEDRIVER_EXECUTABLE=/usr/bin/chromedriver
+    entrypoint: ["tail", "-f", "/dev/null"]
+
+  # appium-node-2:
+  #   build: ./appium-node
+  #   depends_on:
+  #     - selenium-hub
+  #   ports:
+  #     - "4725:4723" # Mapeia para a porta 4725 da sua máquina

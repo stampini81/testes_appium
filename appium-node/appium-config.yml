@@ -1,0 +1,10 @@
+server:
+  port: 4723
+  address: "0.0.0.0"
+  allow-cors: true
+  default-capabilities:
+    platformName: "Android"
+    browserName: "Browser"
+    'appium:automationName': 'UiAutomator2'
+    'appium:deviceName': '192.168.15.28:5555'
+    'appium:chromedriverExecutable': '/usr/bin/chromedriver'
